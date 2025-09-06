@@ -136,7 +136,7 @@ def train():
     print(model.summary())
 
     # Define callbacks
-    filepath = os.path.join(output_dir, "weights-{epoch:02d}-{loss:.4f}.hdf5")
+    filepath = os.path.join(output_dir, "weights-{epoch:02d}-{loss:.4f}.keras")
 
     checkpoint = tf.keras.callbacks.ModelCheckpoint(
         filepath,
