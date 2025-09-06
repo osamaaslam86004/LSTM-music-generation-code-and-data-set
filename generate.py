@@ -15,7 +15,7 @@ from music21 import chord, key, meter, note, pitch, stream
 
 # Configuration
 DATA_PATH = "data/notes"
-MODEL_PATH = "content/mmusic250516/weights-200-0.1454.hdf5"  # Your HDF5 model file
+MODEL_PATH = "content/mmusic250516/weights-200-0.1454.keras"  # Your HDF5 model file
 OUTPUT_PATH = "generated_music.mid"
 SEQUENCE_LENGTH = 50
 GENERATE_LENGTH = 300
