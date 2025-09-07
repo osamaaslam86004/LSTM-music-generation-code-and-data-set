@@ -4,6 +4,7 @@
 Train a neural network and save the parameters (weights) to an HDF5 file
 """
 
+import math
 import os
 import random
 import traceback
@@ -94,14 +95,6 @@ class PlotLosses(tf.keras.callbacks.Callback):
         print(f"Successfully saved figure to {self.save_path}")
 
 
-# Learning rate scheduler with slower decay rate
-def lr_scheduler(epoch, lr):
-    if epoch < 60:  # Maintain initial learning rate for more epochs
-        return lr
-    else:
-        return lr * tf.math.exp(-0.01)  # Smaller decay rate
-
-
 # Train the neural network
 def train():
     # Create output directory if it doesn't exist
@@ -138,31 +131,27 @@ def train():
     # Define callbacks
     filepath = os.path.join(output_dir, "weights-{epoch:02d}-{loss:.4f}.keras")
 
+    # Model checkpoint (save best model by validation loss)
     checkpoint = tf.keras.callbacks.ModelCheckpoint(
-        filepath,
-        monitor="loss",  # Monitor training loss
-        verbose=1,
-        save_best_only=True,
-        mode="min",
+        filepath, monitor="val_loss", save_best_only=True, mode="min", verbose=1
     )
 
     plot_losses = PlotLosses(save_path=os.path.join(output_dir, "training_loss.png"))
 
-    # Early stopping: stop when loss ≤ 0.05
+    # Early stopping based on validation loss
     early_stopping = tf.keras.callbacks.EarlyStopping(
-        monitor="loss",
-        baseline=0.04,  # Stop if loss falls below this value
-        patience=2000,  # Max epochs to wait after reaching baseline
+        monitor="val_loss",
+        patience=50,
         verbose=1,
         mode="min",
         restore_best_weights=True,
     )
 
-    learning_rate_scheduler = tf.keras.callbacks.LearningRateScheduler(
-        lr_scheduler, verbose=1
+    # Reduce LR on plateau instead of exponential scheduler
+    reduce_lr = tf.keras.callbacks.ReduceLROnPlateau(
+        monitor="val_loss", factor=0.5, patience=10, min_lr=1e-6, verbose=1
     )
-
-    callbacks_list = [checkpoint, plot_losses, early_stopping, learning_rate_scheduler]
+    callbacks_list = [checkpoint, plot_losses, early_stopping, reduce_lr]
 
     # Compile the model
     model.compile(
