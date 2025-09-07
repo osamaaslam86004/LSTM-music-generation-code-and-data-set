@@ -95,7 +95,11 @@ class PlotLosses(tf.keras.callbacks.Callback):
 class LrLogger(tf.keras.callbacks.Callback):
     def on_epoch_end(self, epoch, logs=None):
         logs = logs or {}
-        logs["lr"] = float(tf.keras.backend.get_value(self.model.optimizer.lr))
+        # Compatible with TF 2.11+ (Adam has .learning_rate instead of .lr)
+        lr = self.model.optimizer.learning_rate
+        if isinstance(lr, tf.keras.optimizers.schedules.LearningRateSchedule):
+            lr = lr(self.model.optimizer.iterations)  # evaluate schedule
+        logs["lr"] = float(tf.keras.backend.get_value(lr))
 
 
 # Train the neural network
