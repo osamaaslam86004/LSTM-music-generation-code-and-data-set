@@ -1,7 +1,7 @@
 # -*- coding: UTF-8 -*-
 
 """
-Train a neural network and save the parameters (weights) to an HDF5 file
+Train a neural network and save the parameters (weights) to an keras file
 """
 
 import os
@@ -132,7 +132,7 @@ def train():
     print(model.summary())
 
     # Define callbacks
-    filepath = os.path.join(output_dir, "weights-best.hdf5")
+    filepath = os.path.join(output_dir, "weights-best.keras")
 
     checkpoint = tf.keras.callbacks.ModelCheckpoint(
         filepath,
