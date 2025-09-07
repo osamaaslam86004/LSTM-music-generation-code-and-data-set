@@ -4,7 +4,6 @@
 Train a neural network and save the parameters (weights) to an HDF5 file
 """
 
-import math
 import os
 import random
 import traceback
@@ -26,6 +25,7 @@ tf.random.set_seed(42)
 np.random.seed(42)
 random.seed(42)
 
+
 """
 ==== Concepts of some terms ====
 # Batch size: The number of samples in one batch. The number of samples used in one iteration 
@@ -34,10 +34,6 @@ random.seed(42)
 # Iteration: One update of the network's weights. Each weight update requires a forward pass 
 #            and a backward pass using a batch of data.
 # Epoch: One complete pass through the entire training dataset.
-
-# Example: If the training set has 1000 samples and the batch size is 10:
-#          Training the entire dataset once requires 100 iterations and 1 epoch.
-#          Usually, we train for multiple epochs.
 """
 
 
@@ -95,6 +91,13 @@ class PlotLosses(tf.keras.callbacks.Callback):
         print(f"Successfully saved figure to {self.save_path}")
 
 
+# Callback to log learning rate each epoch
+class LrLogger(tf.keras.callbacks.Callback):
+    def on_epoch_end(self, epoch, logs=None):
+        logs = logs or {}
+        logs["lr"] = float(tf.keras.backend.get_value(self.model.optimizer.lr))
+
+
 # Train the neural network
 def train():
     # Create output directory if it doesn't exist
@@ -129,16 +132,19 @@ def train():
     print(model.summary())
 
     # Define callbacks
-    filepath = os.path.join(output_dir, "weights-{epoch:02d}-{loss:.4f}.keras")
+    filepath = os.path.join(output_dir, "weights-best.hdf5")
 
-    # Model checkpoint (save best model by validation loss)
     checkpoint = tf.keras.callbacks.ModelCheckpoint(
-        filepath, monitor="val_loss", save_best_only=True, mode="min", verbose=1
+        filepath,
+        monitor="val_loss",  # Monitor validation loss
+        verbose=1,
+        save_best_only=True,
+        mode="min",
     )
 
     plot_losses = PlotLosses(save_path=os.path.join(output_dir, "training_loss.png"))
 
-    # Early stopping based on validation loss
+    # Early stopping: stop when val_loss stops improving
     early_stopping = tf.keras.callbacks.EarlyStopping(
         monitor="val_loss",
         patience=50,
@@ -147,16 +153,17 @@ def train():
         restore_best_weights=True,
     )
 
-    # Reduce LR on plateau instead of exponential scheduler
+    # Reduce LR on plateau
     reduce_lr = tf.keras.callbacks.ReduceLROnPlateau(
         monitor="val_loss", factor=0.5, patience=10, min_lr=1e-6, verbose=1
     )
-    callbacks_list = [checkpoint, plot_losses, early_stopping, reduce_lr]
+
+    callbacks_list = [checkpoint, plot_losses, early_stopping, reduce_lr, LrLogger()]
 
     # Compile the model
     model.compile(
         loss="categorical_crossentropy",
-        optimizer=tf.keras.optimizers.Adam(learning_rate=0.001),
+        optimizer=tf.keras.optimizers.Adam(learning_rate=5e-4),
         metrics=["accuracy"],
     )
 
@@ -166,11 +173,11 @@ def train():
         f"Using {1-validation_split:.0%} for training, {validation_split:.0%} for validation"
     )
 
-    # Train the model with increased epochs
+    # Train the model
     history = model.fit(
         network_input,
         network_output,
-        epochs=2000,  # Maximum training epochs
+        epochs=2000,
         batch_size=64,
         validation_split=validation_split,
         callbacks=callbacks_list,
@@ -205,9 +212,7 @@ def train():
         plt.grid(True, linestyle="--", alpha=0.7)
         plt.legend(fontsize=14)
 
-        # Use plain number format
         plt.ticklabel_format(style="plain", axis="y")
-
         ax = plt.gca()
         ax.xaxis.set_major_locator(MaxNLocator(integer=True))
 
@@ -221,25 +226,23 @@ def train():
             fontsize=12,
         )
 
-        # Learning rate plot
-        plt.subplot(2, 1, 2)
-        plt.plot(
-            epochs,
-            [float(lr) for lr in history.history["lr"]],
-            "g-",
-            linewidth=2,
-            label="Learning Rate",
-        )
-        plt.title("Learning Rate Schedule", fontsize=18)
-        plt.xlabel("Epoch", fontsize=16)
-        plt.ylabel("Learning Rate", fontsize=16)
-        plt.grid(True, linestyle="--", alpha=0.7)
-        plt.legend(fontsize=14)
-        plt.yscale("log")  # Log scale for learning rate
+        # Learning rate plot (safe)
+        if "lr" in history.history:
+            plt.subplot(2, 1, 2)
+            plt.plot(
+                epochs, history.history["lr"], "g-", linewidth=2, label="Learning Rate"
+            )
+            plt.title("Learning Rate Schedule", fontsize=18)
+            plt.xlabel("Epoch", fontsize=16)
+            plt.ylabel("Learning Rate", fontsize=16)
+            plt.grid(True, linestyle="--", alpha=0.7)
+            plt.legend(fontsize=14)
+            plt.yscale("log")
+        else:
+            print("⚠️ Skipping LR plot (no 'lr' in history).")
 
         plt.tight_layout()
 
-        # Ensure save directory exists
         save_dir = os.path.dirname(final_plot_path)
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
@@ -255,7 +258,7 @@ def train():
     model.save(os.path.join(output_dir, "final_model.keras"))
     print(f"Final model saved to: {os.path.join(output_dir, 'final_model.keras')}")
 
-    # Save mappings for later use
+    # Save mappings
     import pickle
 
     with open(os.path.join(output_dir, "pitch_to_int.pkl"), "wb") as f:
@@ -274,7 +277,6 @@ def prepare_sequences(notes, pitch_to_int, sequence_length, num_pitch):
     network_input = []
     network_output = []
 
-    # Generate training sequences
     for i in range(0, len(notes) - sequence_length, 1):
         sequence_in = notes[i : i + sequence_length]
         sequence_out = notes[i + sequence_length]
@@ -284,11 +286,9 @@ def prepare_sequences(notes, pitch_to_int, sequence_length, num_pitch):
 
     n_patterns = len(network_input)
 
-    # Reshape and normalize input
     network_input = np.reshape(network_input, (n_patterns, sequence_length, 1))
     network_input = network_input / float(num_pitch)
 
-    # One-hot encode output
     network_output = tf.keras.utils.to_categorical(network_output)
 
     return network_input, network_output
