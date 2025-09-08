@@ -44,14 +44,17 @@ class PlotLosses(tf.keras.callbacks.Callback):
         self.save_path = save_path
         self.epochs = []
         self.losses = []
+        self.val_losses = []
 
     def on_train_begin(self, logs={}):
         self.epochs = []
         self.losses = []
+        self.val_losses = []
 
     def on_epoch_end(self, epoch, logs={}):
         self.epochs.append(epoch + 1)
         self.losses.append(logs.get("loss"))
+        self.val_losses.append(logs.get("val_loss"))  # <--- NEW
 
         print(f"PlotLosses: Saving figure to {self.save_path}")
 
@@ -64,24 +67,29 @@ class PlotLosses(tf.keras.callbacks.Callback):
     def _plot_and_save(self):
         plt.figure(figsize=(12, 8))
 
-        # Plot raw training loss
+        # Plot training + validation loss
         plt.plot(self.epochs, self.losses, "b-", linewidth=2, label="Training Loss")
+        if any(v is not None for v in self.val_losses):
+            plt.plot(
+                self.epochs,
+                self.val_losses,
+                "r--",
+                linewidth=2,
+                label="Validation Loss",
+            )
 
-        plt.title("Training Loss During Training", fontsize=18)
+        plt.title("Loss During Training", fontsize=18)
         plt.xlabel("Epoch", fontsize=16)
         plt.ylabel("Loss (Categorical Crossentropy)", fontsize=16)
         plt.grid(True, linestyle="--", alpha=0.7)
         plt.legend(fontsize=14)
 
-        # Use plain number format instead of scientific notation
         plt.ticklabel_format(style="plain", axis="y")
-
         ax = plt.gca()
         ax.xaxis.set_major_locator(MaxNLocator(integer=True))
 
         plt.tight_layout()
 
-        # Ensure save directory exists
         save_dir = os.path.dirname(self.save_path)
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
