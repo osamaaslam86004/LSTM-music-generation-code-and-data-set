@@ -4,6 +4,7 @@
 Train a neural network and save the parameters (weights) to an HDF5 file
 """
 
+import math
 import os
 import random
 import traceback
@@ -99,7 +100,7 @@ def lr_scheduler(epoch, lr):
     if epoch < 60:  # Maintain initial learning rate for more epochs
         return lr
     else:
-        return lr * tf.math.exp(-0.01)  # Smaller decay rate
+        return lr * math.exp(-0.01)  # Smaller decay rate
 
 
 # Train the neural network
