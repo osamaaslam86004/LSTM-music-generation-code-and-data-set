@@ -104,6 +104,36 @@ def lr_scheduler(epoch, lr):
         return lr * math.exp(-0.01)  # Smaller decay rate
 
 
+class PerplexityLogger(tf.keras.callbacks.Callback):
+    def on_epoch_end(self, epoch, logs=None):
+        logs = logs or {}
+        # Training perplexity
+        if "loss" in logs:
+            logs["perplexity"] = float(np.exp(logs["loss"]))
+        # Validation perplexity
+        if "val_loss" in logs:
+            logs["val_perplexity"] = float(np.exp(logs["val_loss"]))
+
+        # Print nicely
+        msg = f"Epoch {epoch+1} | "
+        msg += (
+            f"loss: {logs.get('loss'):.4f}, val_loss: {logs.get('val_loss'):.4f}, "
+            if "val_loss" in logs
+            else ""
+        )
+        msg += (
+            f"acc: {logs.get('accuracy'):.4f}, val_acc: {logs.get('val_accuracy'):.4f}, "
+            if "val_accuracy" in logs
+            else ""
+        )
+        msg += (
+            f"ppl: {logs.get('perplexity'):.4f}, val_ppl: {logs.get('val_perplexity'):.4f}"
+            if "val_perplexity" in logs
+            else ""
+        )
+        print(msg)
+
+
 # Train the neural network
 def train():
     # Create output directory if it doesn't exist
@@ -164,7 +194,13 @@ def train():
         lr_scheduler, verbose=1
     )
 
-    callbacks_list = [checkpoint, plot_losses, early_stopping, learning_rate_scheduler]
+    callbacks_list = [
+        checkpoint,
+        plot_losses,
+        early_stopping,
+        learning_rate_scheduler,
+        PerplexityLogger(),
+    ]
 
     # Compile the model
     model.compile(
