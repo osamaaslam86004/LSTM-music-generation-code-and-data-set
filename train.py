@@ -6,6 +6,7 @@ Train a neural network and save the parameters (weights) to an HDF5 file
 
 import math
 import os
+import pickle
 import random
 import traceback
 
@@ -153,7 +154,7 @@ def train():
     early_stopping = tf.keras.callbacks.EarlyStopping(
         monitor="loss",
         baseline=0.04,  # Stop if loss falls below this value
-        patience=2000,  # Max epochs to wait after reaching baseline
+        patience=50,  # Max epochs to wait after reaching baseline
         verbose=1,
         mode="min",
         restore_best_weights=True,
@@ -200,67 +201,137 @@ def train():
 
     # Plot and save the final loss curve
     epochs = range(1, len(history.history["loss"]) + 1)
-    final_plot_path = os.path.join(output_dir, "training_loss_final.png")
 
     try:
-        plt.figure(figsize=(14, 10))
-
-        # Loss plot
-        plt.subplot(2, 1, 1)
+        # --- Train vs Validation Loss ---
+        loss_plot_path = os.path.join(output_dir, "train_val_loss.png")
+        plt.figure(figsize=(12, 8))
         plt.plot(
             epochs, history.history["loss"], "b-", linewidth=2, label="Training Loss"
         )
-
-        plt.title("Training Loss During Training", fontsize=18)
+        if "val_loss" in history.history:
+            plt.plot(
+                epochs,
+                history.history["val_loss"],
+                "r--",
+                linewidth=2,
+                label="Validation Loss",
+            )
+        plt.title("Training & Validation Loss", fontsize=18)
         plt.xlabel("Epoch", fontsize=16)
-        plt.ylabel("Loss", fontsize=16)
+        plt.ylabel("Loss (Categorical Crossentropy)", fontsize=16)
         plt.grid(True, linestyle="--", alpha=0.7)
         plt.legend(fontsize=14)
+        plt.tight_layout()
+        plt.savefig(loss_plot_path)
+        plt.close()
+        print(f"✅ Saved train/val loss plot to: {loss_plot_path}")
 
-        # Use plain number format
-        plt.ticklabel_format(style="plain", axis="y")
-
-        ax = plt.gca()
-        ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-
-        # Annotation for best epoch
-        plt.axvline(x=best_epoch, color="g", linestyle="--", alpha=0.7)
-        plt.annotate(
-            f"Best Epoch: {best_epoch}",
-            xy=(best_epoch, history.history["loss"][best_epoch - 1]),
-            xytext=(best_epoch + 5, history.history["loss"][best_epoch - 1] + 0.05),
-            arrowprops=dict(facecolor="black", shrink=0.05, width=1.5, headwidth=8),
-            fontsize=12,
-        )
-
-        # Learning rate plot
-        plt.subplot(2, 1, 2)
+        # --- Categorical Cross-Entropy Loss ---
+        cce_plot_path = os.path.join(output_dir, "categorical_crossentropy_loss.png")
+        plt.figure(figsize=(12, 8))
         plt.plot(
             epochs,
-            [float(lr) for lr in history.history["lr"]],
-            "g-",
+            history.history["loss"],
+            "b-",
             linewidth=2,
-            label="Learning Rate",
+            label="Training CCE Loss",
         )
-        plt.title("Learning Rate Schedule", fontsize=18)
+        if "val_loss" in history.history:
+            plt.plot(
+                epochs,
+                history.history["val_loss"],
+                "r--",
+                linewidth=2,
+                label="Validation CCE Loss",
+            )
+        plt.title("Categorical Crossentropy Loss Over Epochs", fontsize=18)
         plt.xlabel("Epoch", fontsize=16)
-        plt.ylabel("Learning Rate", fontsize=16)
+        plt.ylabel("CCE Loss", fontsize=16)
         plt.grid(True, linestyle="--", alpha=0.7)
         plt.legend(fontsize=14)
-        plt.yscale("log")  # Log scale for learning rate
-
         plt.tight_layout()
-
-        # Ensure save directory exists
-        save_dir = os.path.dirname(final_plot_path)
-        if not os.path.exists(save_dir):
-            os.makedirs(save_dir)
-
-        plt.savefig(final_plot_path)
+        plt.savefig(cce_plot_path)
         plt.close()
-        print(f"Final training plot saved to: {final_plot_path}")
+        print(f"✅ Saved categorical crossentropy loss plot to: {cce_plot_path}")
+
+        # --- Train vs Validation Accuracy ---
+        if "accuracy" in history.history:
+            acc_plot_path = os.path.join(output_dir, "train_val_accuracy.png")
+            plt.figure(figsize=(12, 8))
+            plt.plot(
+                epochs,
+                history.history["accuracy"],
+                "b-",
+                linewidth=2,
+                label="Training Accuracy",
+            )
+            if "val_accuracy" in history.history:
+                plt.plot(
+                    epochs,
+                    history.history["val_accuracy"],
+                    "r--",
+                    linewidth=2,
+                    label="Validation Accuracy",
+                )
+            plt.title("Training & Validation Accuracy", fontsize=18)
+            plt.xlabel("Epoch", fontsize=16)
+            plt.ylabel("Accuracy", fontsize=16)
+            plt.grid(True, linestyle="--", alpha=0.7)
+            plt.legend(fontsize=14)
+            plt.tight_layout()
+            plt.savefig(acc_plot_path)
+            plt.close()
+            print(f"✅ Saved train/val accuracy plot to: {acc_plot_path}")
+
+        # --- Perplexity over epochs (exp(loss)) ---
+        perp_plot_path = os.path.join(output_dir, "perplexity.png")
+        plt.figure(figsize=(12, 8))
+        plt.plot(
+            epochs,
+            np.exp(history.history["loss"]),
+            "b-",
+            linewidth=2,
+            label="Training Perplexity",
+        )
+        if "val_loss" in history.history:
+            plt.plot(
+                epochs,
+                np.exp(history.history["val_loss"]),
+                "r--",
+                linewidth=2,
+                label="Validation Perplexity",
+            )
+        plt.title("Perplexity Over Epochs", fontsize=18)
+        plt.xlabel("Epoch", fontsize=16)
+        plt.ylabel("Perplexity (exp(loss))", fontsize=16)
+        plt.grid(True, linestyle="--", alpha=0.7)
+        plt.legend(fontsize=14)
+        plt.tight_layout()
+        plt.savefig(perp_plot_path)
+        plt.close()
+        print(f"✅ Saved perplexity plot to: {perp_plot_path}")
+
+        # --- Learning Rate Schedule (if logged) ---
+        if "lr" in history.history:
+            lr_plot_path = os.path.join(output_dir, "learning_rate.png")
+            plt.figure(figsize=(12, 8))
+            plt.plot(
+                epochs, history.history["lr"], "g-", linewidth=2, label="Learning Rate"
+            )
+            plt.title("Learning Rate Schedule", fontsize=18)
+            plt.xlabel("Epoch", fontsize=16)
+            plt.ylabel("Learning Rate", fontsize=16)
+            plt.grid(True, linestyle="--", alpha=0.7)
+            plt.legend(fontsize=14)
+            plt.yscale("log")
+            plt.tight_layout()
+            plt.savefig(lr_plot_path)
+            plt.close()
+            print(f"✅ Saved learning rate plot to: {lr_plot_path}")
+
     except Exception as e:
-        print(f"Error saving final training plot: {str(e)}")
+        print(f"⚠️ Error saving plots: {str(e)}")
         traceback.print_exc()
 
     # Save the final model and mappings
@@ -268,8 +339,6 @@ def train():
     print(f"Final model saved to: {os.path.join(output_dir, 'final_model.h5')}")
 
     # Save mappings for later use
-    import pickle
-
     with open(os.path.join(output_dir, "pitch_to_int.pkl"), "wb") as f:
         pickle.dump(pitch_to_int, f)
 
