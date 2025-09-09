@@ -184,7 +184,7 @@ def train():
     early_stopping = tf.keras.callbacks.EarlyStopping(
         monitor="loss",
         baseline=0.04,  # Stop if loss falls below this value
-        patience=50,  # Max epochs to wait after reaching baseline
+        patience=10,  # Max epochs to wait after reaching baseline
         verbose=1,
         mode="min",
         restore_best_weights=True,
@@ -219,7 +219,7 @@ def train():
     history = model.fit(
         network_input,
         network_output,
-        epochs=2000,  # Maximum training epochs
+        epochs=200,  # Maximum training epochs
         batch_size=64,
         validation_split=validation_split,
         callbacks=callbacks_list,
