@@ -427,10 +427,10 @@ def build_model(input_shape, num_pitch):
     """
     inputs = tf.keras.Input(shape=input_shape)
 
-    x = LSTM(8, return_sequences=True)(inputs)
+    x = LSTM(2, return_sequences=True)(inputs)
     x = Dropout(0.4)(x)
-    x = LSTM(8)(x)
-    x = Dense(8, activation="relu")(x)
+    x = LSTM(2)(x)
+    x = Dense(4, activation="relu")(x)
     outputs = Dense(num_pitch, activation="softmax")(x)
 
     # Create model
