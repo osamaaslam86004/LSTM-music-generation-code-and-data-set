@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 from matplotlib.ticker import MaxNLocator
-from tf.keras.layers import LSTM, Dense, Dropout
+from tensorflow.keras.layers import LSTM, Dense, Dropout, Model
 
 matplotlib.use("Agg")
 
@@ -425,7 +425,7 @@ def build_model(input_shape, num_pitch):
     outputs = Dense(num_pitch, activation="softmax")(x)
 
     # Create model
-    model = tf.keras.Model(inputs=inputs, outputs=outputs)
+    model = Model(inputs=inputs, outputs=outputs)
 
     return model
 
