@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 from matplotlib.ticker import MaxNLocator
+from tf.keras.layers import LSTM, Dense, Dropout
 
 matplotlib.use("Agg")
 
@@ -417,41 +418,11 @@ def build_model(input_shape, num_pitch):
     """
     inputs = tf.keras.Input(shape=input_shape)
 
-    # First LSTM block
-    x = tf.keras.layers.LSTM(512, return_sequences=True)(inputs)
-    x = tf.keras.layers.BatchNormalization()(x)
-    x = tf.keras.layers.Dropout(0.3)(x)
-
-    # Second LSTM block with residual connection
-    residual = x
-    x = tf.keras.layers.LSTM(512, return_sequences=True)(x)
-    x = tf.keras.layers.BatchNormalization()(x)
-    x = tf.keras.layers.Dropout(0.3)(x)
-    x = tf.keras.layers.Add()([x, residual])  # Residual connection
-
-    # Third LSTM block with residual connection
-    residual = x
-    x = tf.keras.layers.LSTM(512, return_sequences=False)(x)
-    x = tf.keras.layers.BatchNormalization()(x)
-    x = tf.keras.layers.Dropout(0.3)(x)
-
-    # Dense layers with L2 regularization
-    x = tf.keras.layers.Dense(
-        1024, kernel_regularizer=tf.keras.regularizers.l2(0.0001)
-    )(x)
-    x = tf.keras.layers.BatchNormalization()(x)
-    x = tf.keras.layers.Activation("relu")(x)
-    x = tf.keras.layers.Dropout(0.3)(x)
-
-    x = tf.keras.layers.Dense(512, kernel_regularizer=tf.keras.regularizers.l2(0.0001))(
-        x
-    )
-    x = tf.keras.layers.BatchNormalization()(x)
-    x = tf.keras.layers.Activation("relu")(x)
-    x = tf.keras.layers.Dropout(0.3)(x)
-
-    # Output layer
-    outputs = tf.keras.layers.Dense(num_pitch, activation="softmax")(x)
+    x = LSTM(128, return_sequences=True)(inputs)
+    x = Dropout(0.2)(x)
+    x = LSTM(128)(x)
+    x = Dense(128, activation="relu")(x)
+    outputs = Dense(num_pitch, activation="softmax")(x)
 
     # Create model
     model = tf.keras.Model(inputs=inputs, outputs=outputs)
