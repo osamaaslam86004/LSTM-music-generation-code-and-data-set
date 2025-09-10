@@ -421,7 +421,6 @@ def build_model(input_shape, num_pitch):
 
     x = LSTM(128, return_sequences=True)(inputs)
     x = Dropout(0.2)(x)
-    x = LSTM(128)(x)
     x = Dense(128, activation="relu")(x)
     outputs = Dense(num_pitch, activation="softmax")(x)
 
