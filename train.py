@@ -174,7 +174,7 @@ def train():
 
     checkpoint = tf.keras.callbacks.ModelCheckpoint(
         filepath,
-        monitor="loss",  # Monitor training loss
+        monitor="val_loss",
         verbose=1,
         save_best_only=True,
         mode="min",
@@ -184,7 +184,7 @@ def train():
 
     # Early stopping: stop when loss ≤ 0.05
     early_stopping = tf.keras.callbacks.EarlyStopping(
-        monitor="loss",
+        monitor="val_loss",
         baseline=0.04,  # Stop if loss falls below this value
         patience=10,  # Max epochs to wait after reaching baseline
         verbose=1,
@@ -192,8 +192,16 @@ def train():
         restore_best_weights=True,
     )
 
-    learning_rate_scheduler = tf.keras.callbacks.LearningRateScheduler(
-        lr_scheduler, verbose=1
+    # learning_rate_scheduler = tf.keras.callbacks.LearningRateScheduler(
+    #     lr_scheduler, verbose=1
+    # )
+
+    learning_rate_scheduler = tf.keras.callbacks.ReduceLROnPlateau(
+        monitor="val_loss",
+        factor=0.5,
+        patience=5,
+        min_lr=1e-6,
+        verbose=1,
     )
 
     callbacks_list = [
