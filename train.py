@@ -373,8 +373,8 @@ def train():
         traceback.print_exc()
 
     # Save the final model and mappings
-    model.save(os.path.join(output_dir, "final_model.h5"))
-    print(f"Final model saved to: {os.path.join(output_dir, 'final_model.h5')}")
+    model.save(os.path.join(output_dir, "final_model.keras"))
+    print(f"Final model saved to: {os.path.join(output_dir, 'final_model.keras')}")
 
     # Save mappings for later use
     with open(os.path.join(output_dir, "pitch_to_int.pkl"), "wb") as f:
@@ -419,10 +419,10 @@ def build_model(input_shape, num_pitch):
     """
     inputs = tf.keras.Input(shape=input_shape)
 
-    x = LSTM(64, return_sequences=True)(inputs)
+    x = LSTM(16, return_sequences=True)(inputs)
     x = Dropout(0.4)(x)
-    x = LSTM(64)(x)
-    x = Dense(128, activation="relu")(x)
+    x = LSTM(16)(x)
+    x = Dense(32, activation="relu")(x)
     outputs = Dense(num_pitch, activation="softmax")(x)
 
     # Create model
