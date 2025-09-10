@@ -16,7 +16,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 from matplotlib.ticker import MaxNLocator
-from tensorflow.keras.layers import LSTM, Dense, Dropout, Model
+from tensorflow.keras import Model
+from tensorflow.keras.layers import LSTM, Dense, Dropout
 
 matplotlib.use("Agg")
 
